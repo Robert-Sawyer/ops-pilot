@@ -1,0 +1,20 @@
+{
+  "name": "ops-pilot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A Developer Operations AI agent with auditable tool calling.",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev --workspace @ops-pilot/api\" \"npm run dev --workspace @ops-pilot/web\"",
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20.18.0"
+  }
+}

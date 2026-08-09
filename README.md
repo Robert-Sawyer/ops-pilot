@@ -4,11 +4,15 @@ Ops Pilot is a small Developer Operations Agent built to demonstrate real AI too
 
 It investigates fictional service incidents, queries local operational data, searches runbooks, creates incident notes, and requests user confirmation before running dangerous actions.
 
+## Current status
+
+Stage 1 is complete: the repository contains a TypeScript monorepo with a Next.js frontend and a Fastify API. Agent orchestration, local operational data, and OpenAI tool calling will be added in later stages.
+
 ## Example
 
 **User:** `Payments are failing. Can you investigate?`
 
-The agent can independently call tools such as:
+The agent will independently call tools such as:
 
 1. `get_service_health("payments-api")`
 2. `get_recent_errors("payments-api")`
@@ -18,16 +22,47 @@ It then produces an evidence-based answer, for example:
 
 > Payments API is healthy, but 17 requests failed with gateway timeout errors during the last 10 minutes. The runbook recommends checking provider availability before retrying requests.
 
-For a risky request such as `Retry the failed payment`, the backend returns a pending confirmation instead of executing immediately. The UI lets the user explicitly cancel or confirm the requested tool call.
+For a risky request such as `Retry the failed payment`, the backend will return a pending confirmation instead of executing immediately. The UI will let the user explicitly cancel or confirm the requested tool call.
 
-## Planned stack
+## Tech stack
 
-- React or Next.js frontend
+- Next.js 15 and React 19 frontend
 - Fastify API
 - TypeScript
-- OpenAI SDK with function/tool calling
-- Small local dataset for services, errors, runbooks, payments, and incident notes
+- OpenAI SDK with function/tool calling (planned)
+- Small local dataset for services, errors, runbooks, payments, and incident notes (planned)
 - Optional MCP adapter after the MVP
+
+## Repository structure
+
+```text
+ops-pilot/
+├── apps/
+│   ├── api/              # Fastify API, currently exposes GET /health
+│   └── web/              # Next.js frontend
+├── package.json          # npm workspaces and root commands
+└── tsconfig.base.json    # shared TypeScript compiler settings
+```
+
+## Getting started
+
+**Requirements:** Node.js 20.18 or newer and npm.
+
+```bash
+npm install
+npm run dev
+```
+
+The frontend starts at [http://localhost:3000](http://localhost:3000) and the API at [http://localhost:3001](http://localhost:3001). You can check the API with [http://localhost:3001/health](http://localhost:3001/health).
+
+Each app includes an `.env.example` file. Copy it to `.env.local` when configuration is needed.
+
+Useful commands:
+
+```bash
+npm run typecheck
+npm run build
+```
 
 ## Core services
 
@@ -41,7 +76,7 @@ For a risky request such as `Retry the failed payment`, the backend returns a pe
 - `get_recent_errors(service)`
 - `search_runbook(query)`
 - `create_incident_note(...)`
-- `retry_payment(paymentId)` — requires confirmation
+- `retry_payment(paymentId)` - requires confirmation
 
 ## Key product views
 
@@ -54,7 +89,3 @@ For a risky request such as `Retry the failed payment`, the backend returns a pe
 - Demonstrate genuine multi-step tool calling instead of a prompt-only simulation.
 - Keep tool execution explicit, typed, auditable, and safe.
 - Provide a compact portfolio project focused on AI-agent backend patterns.
-
-## Status
-
-Planning / MVP not yet implemented.
