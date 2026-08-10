@@ -82,7 +82,7 @@ The frontend connects to `http://localhost:3001` by default. To use another API 
 
 ## Current status
 
-Stages 1 through 4 are complete: the repository contains a TypeScript monorepo, typed local operational data, strict operational tools, an OpenAI Responses API tool-calling loop, a chat interface with agent trace, and explicit approval handling for dangerous actions.
+Stages 1 through 5 are complete: the repository contains a TypeScript monorepo, typed local operational data, strict operational tools, an OpenAI Responses API tool-calling loop, a chat interface, explicit approval handling for dangerous actions, and a dedicated Agent Trace screen.
 
 ## Example
 
@@ -121,7 +121,10 @@ ops-pilot/
 |   |       |-- data/        # domain types, fixtures, and local store
 |   |       |-- routes/      # Fastify agent endpoints
 |   |       `-- tools/       # typed operational tools and policies
-|   `-- web/                 # Next.js Chat UI and Agent trace
+|   `-- web/
+|       `-- app/
+|           |-- trace/      # dedicated Agent Trace route
+|           `-- components/ # Chat UI, trace timeline, and shared navigation
 |-- package.json             # npm workspaces and root commands
 `-- tsconfig.base.json       # shared TypeScript compiler settings
 ```
@@ -131,6 +134,18 @@ ops-pilot/
 The workspace shows agent answers and an ordered execution trace. Safe tools run immediately. A dangerous tool returns `requiresConfirmation: true`, and the backend keeps the paused run in memory without executing the action.
 
 Confirming or cancelling sends the decision to the API. The backend consumes the pending confirmation once, either executes the approved tool or records the cancellation, and then lets the model produce its final response. Confirmations expire after 10 minutes and cannot be replayed.
+
+## Agent Trace screen
+
+Open [http://localhost:3000/trace](http://localhost:3000/trace) or use the **Agent trace** navigation item after running an investigation. The screen presents the latest execution as an ordered audit timeline containing:
+
+- the user's message and the agent's final answer
+- each model response round and its response identifier
+- tool names, call identifiers, and formatted arguments
+- tool execution results with success or error status
+- confirmation requests and the user's decision
+
+The full-screen view also provides step counts, filters for messages, tools, and decisions, plus an option to copy the complete trace as JSON. The latest trace is stored in `sessionStorage`, so it survives navigation and page refreshes in the current browser tab but is cleared when that tab is closed.
 
 ## Agent API
 
