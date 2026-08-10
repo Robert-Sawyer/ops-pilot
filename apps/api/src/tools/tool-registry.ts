@@ -3,7 +3,11 @@ import type { FunctionTool } from "openai/resources/responses/responses";
 import { z } from "zod";
 
 export interface ToolError {
-  code: "unknown_tool" | "invalid_arguments" | "execution_failed";
+  code:
+    | "unknown_tool"
+    | "invalid_arguments"
+    | "execution_failed"
+    | "cancelled_by_user";
   message: string;
 }
 
@@ -11,17 +15,43 @@ export type ToolExecutionResult =
   | { ok: true; data: unknown }
   | { ok: false; error: ToolError };
 
+export interface ToolConfirmationRequired {
+  requiresConfirmation: true;
+  toolName: string;
+  arguments: unknown;
+  title: string;
+  description: string;
+}
+
+export type ToolInvocationResult =
+  | ToolExecutionResult
+  | ToolConfirmationRequired;
+
+export interface ToolExecutionOptions {
+  confirmed?: boolean;
+}
+
+interface ToolConfirmationPolicy<TArguments> {
+  title: string;
+  describe: (arguments_: TArguments) => string;
+}
+
 interface RegisteredTool<TSchema extends z.ZodType> {
   definition: FunctionTool;
   parameters: TSchema;
   execute: (arguments_: z.infer<TSchema>) => unknown | Promise<unknown>;
+  confirmation?: ToolConfirmationPolicy<z.infer<TSchema>>;
 }
 
 type AnyRegisteredTool = RegisteredTool<z.ZodType>;
 
 export interface ToolRegistry {
   definitions: FunctionTool[];
-  execute(name: string, rawArguments: string): Promise<ToolExecutionResult>;
+  execute(
+    name: string,
+    rawArguments: string,
+    options?: ToolExecutionOptions,
+  ): Promise<ToolInvocationResult>;
 }
 
 export interface DefineToolOptions<TSchema extends z.ZodType> {
@@ -29,6 +59,7 @@ export interface DefineToolOptions<TSchema extends z.ZodType> {
   description: string;
   parameters: TSchema;
   execute: (arguments_: z.infer<TSchema>) => unknown | Promise<unknown>;
+  confirmation?: ToolConfirmationPolicy<z.infer<TSchema>>;
 }
 
 export function defineTool<TSchema extends z.ZodType>(
@@ -42,6 +73,7 @@ export function defineTool<TSchema extends z.ZodType>(
     }),
     parameters: options.parameters,
     execute: options.execute,
+    confirmation: options.confirmation,
   };
 }
 
@@ -56,7 +88,7 @@ export function createToolRegistry(tools: AnyRegisteredTool[]): ToolRegistry {
   return {
     definitions: tools.map((tool) => tool.definition),
 
-    async execute(name, rawArguments) {
+    async execute(name, rawArguments, options = {}) {
       const tool = toolsByName.get(name);
       if (!tool) {
         return {
@@ -82,6 +114,16 @@ export function createToolRegistry(tools: AnyRegisteredTool[]): ToolRegistry {
         );
       }
 
+      if (tool.confirmation && !options.confirmed) {
+        return {
+          requiresConfirmation: true,
+          toolName: tool.definition.name,
+          arguments: parsedArguments.data,
+          title: tool.confirmation.title,
+          description: tool.confirmation.describe(parsedArguments.data),
+        };
+      }
+
       try {
         return { ok: true, data: await tool.execute(parsedArguments.data) };
       } catch (error) {
@@ -96,4 +138,10 @@ export function createToolRegistry(tools: AnyRegisteredTool[]): ToolRegistry {
       }
     },
   };
+}
+
+export function isToolConfirmationRequired(
+  result: ToolInvocationResult,
+): result is ToolConfirmationRequired {
+  return "requiresConfirmation" in result && result.requiresConfirmation;
 }
