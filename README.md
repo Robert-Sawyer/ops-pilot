@@ -1,5 +1,7 @@
 # Ops Pilot
 
+[![CI](https://github.com/Robert-Sawyer/ops-pilot/actions/workflows/ci.yml/badge.svg)](https://github.com/Robert-Sawyer/ops-pilot/actions/workflows/ci.yml)
+
 Ops Pilot is a small Developer Operations Agent built to demonstrate real AI tool calling in a practical backend workflow.
 
 It investigates fictional service incidents, queries local operational data, searches runbooks, creates incident notes, and requests user confirmation before running dangerous actions.
@@ -65,6 +67,8 @@ npm test
 npm run typecheck
 npm run build
 ```
+
+Pull requests to `master` run the same tests, TypeScript checks, and production builds in GitHub Actions.
 
 ## Local operational data
 
