@@ -5,9 +5,11 @@ export {
   type LocalDataStore,
 } from "./local-data-store.js";
 export {
+  type CreateIncidentNoteInput,
   isServiceName,
   serviceNames,
   type ErrorSeverity,
+  type IncidentNote,
   type OperationalDataSeed,
   type Payment,
   type PaymentStatus,

@@ -74,6 +74,7 @@ export interface OperationalDataSeed {
   errors: ServiceError[];
   runbooks: Runbook[];
   payments: Payment[];
+  incidentNotes: IncidentNote[];
 }
 
 export interface PaymentUpdate {
@@ -82,6 +83,16 @@ export interface PaymentUpdate {
   failureCode?: string | null;
   failureReason?: string | null;
 }
+
+export interface IncidentNote {
+  id: string;
+  service: ServiceName;
+  title: string;
+  content: string;
+  createdAt: string;
+}
+
+export type CreateIncidentNoteInput = Omit<IncidentNote, "id">;
 
 export function isServiceName(value: string): value is ServiceName {
   return serviceNames.some((serviceName) => serviceName === value);
