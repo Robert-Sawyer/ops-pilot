@@ -1,5 +1,7 @@
 import { createOperationalDataSeed } from "./fixtures.js";
 import type {
+  CreateIncidentNoteInput,
+  IncidentNote,
   OperationalDataSeed,
   Payment,
   PaymentStatus,
@@ -22,6 +24,8 @@ export interface LocalDataStore {
   listPayments(filters?: ListPaymentFilters): Payment[];
   getPayment(paymentId: string): Payment | null;
   updatePayment(paymentId: string, update: PaymentUpdate): Payment | null;
+  listIncidentNotes(): IncidentNote[];
+  createIncidentNote(input: CreateIncidentNoteInput): IncidentNote;
 }
 
 const clone = <T>(value: T): T => structuredClone(value);
@@ -160,6 +164,20 @@ export function createLocalDataStore(
       }
 
       return clone(payment);
+    },
+
+    listIncidentNotes() {
+      return clone(data.incidentNotes);
+    },
+
+    createIncidentNote(input) {
+      const note: IncidentNote = {
+        ...clone(input),
+        id: `incident_note_${data.incidentNotes.length + 1}`,
+      };
+
+      data.incidentNotes.push(note);
+      return clone(note);
     },
   };
 }

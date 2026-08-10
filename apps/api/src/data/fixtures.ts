@@ -203,5 +203,6 @@ export function createOperationalDataSeed(
         failureReason: "The card was declined by the provider.",
       },
     ],
+    incidentNotes: [],
   };
 }

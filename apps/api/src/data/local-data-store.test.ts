@@ -72,4 +72,17 @@ describe("local data store", () => {
     assert.equal(store.getPayment("payment_123")?.status, "processing");
     assert.equal(store.updatePayment("payment_missing", { status: "failed" }), null);
   });
+
+  it("creates and lists incident notes", () => {
+    const store = createStore();
+    const note = store.createIncidentNote({
+      service: "payments-api",
+      title: "Gateway timeout investigation",
+      content: "The provider returned gateway timeout errors.",
+      createdAt: now.toISOString(),
+    });
+
+    assert.equal(note.id, "incident_note_1");
+    assert.deepEqual(store.listIncidentNotes(), [note]);
+  });
 });

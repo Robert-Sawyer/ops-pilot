@@ -8,7 +8,7 @@ It investigates fictional service incidents, queries local operational data, sea
 
 ## Current status
 
-Stages 1 and 2 are complete: the repository contains a TypeScript monorepo with a Next.js frontend, a Fastify API, and a typed in-memory operational data store. Agent orchestration and OpenAI tool calling will be added in later stages.
+Stages 1 through 3 are complete: the repository contains a TypeScript monorepo, a typed in-memory operational data store, strict operational tools, and a working OpenAI Responses API tool-calling loop exposed through Fastify.
 
 ## Example
 
@@ -31,8 +31,9 @@ For a risky request such as `Retry the failed payment`, the backend will return 
 - Next.js 15 and React 19 frontend
 - Fastify API
 - TypeScript
-- OpenAI SDK with function/tool calling (planned)
-- Typed in-memory dataset for services, errors, runbooks, and payments
+- OpenAI SDK with Responses API function calling
+- Zod schemas for typed tool arguments and runtime validation
+- Typed in-memory dataset for services, errors, runbooks, payments, and incident notes
 - Optional MCP adapter after the MVP
 
 ## Repository structure
@@ -41,7 +42,11 @@ For a risky request such as `Retry the failed payment`, the backend will return 
 ops-pilot/
 ├── apps/
 │   ├── api/
-│   │   └── src/data/     # domain types, fixtures, store, and tests
+│   │   └── src/
+│   │       ├── agent/     # OpenAI tool-calling loop and trace types
+│   │       ├── data/      # domain types, fixtures, and local store
+│   │       ├── routes/    # Fastify agent endpoint
+│   │       └── tools/     # typed operational tool registry
 │   └── web/               # Next.js frontend
 ├── package.json           # npm workspaces and root commands
 └── tsconfig.base.json     # shared TypeScript compiler settings
@@ -49,16 +54,19 @@ ops-pilot/
 
 ## Getting started
 
-**Requirements:** Node.js 20.18 or newer and npm.
+**Requirements:** Node.js 22 or newer, npm, and an OpenAI API key.
 
 ```bash
 npm install
+cp apps/api/.env.example apps/api/.env
 npm run dev
 ```
 
+Set `OPENAI_API_KEY` in `apps/api/.env`. `OPENAI_MODEL` is configurable and defaults to `gpt-5-mini`.
+
 The frontend starts at [http://localhost:3000](http://localhost:3000) and the API at [http://localhost:3001](http://localhost:3001). You can check the API with [http://localhost:3001/health](http://localhost:3001/health).
 
-Each app includes an `.env.example` file. Copy it to `.env.local` when configuration is needed.
+The API reads `apps/api/.env`; the Next.js app uses `apps/web/.env.local` when frontend configuration is needed.
 
 Useful commands:
 
@@ -70,6 +78,18 @@ npm run build
 
 Pull requests to `master` run the same tests, TypeScript checks, and production builds in GitHub Actions.
 
+## Agent API
+
+Run an investigation with:
+
+```bash
+curl -X POST http://localhost:3001/api/agent/run \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Payments are failing. Can you investigate?"}'
+```
+
+The endpoint returns the final `answer` and an ordered `trace` containing the user message, model rounds, tool calls, tool results, and final answer. The loop preserves every model output and sends JSON `function_call_output` items back to the model until it produces a final response. Runs are limited to eight tool rounds.
+
 ## Local operational data
 
 The API includes deterministic sample data for:
@@ -78,6 +98,7 @@ The API includes deterministic sample data for:
 - recent service errors, including 17 payment gateway timeouts
 - searchable runbook sections for payments, notifications, and authentication
 - successful, failed, and processing payments, including `payment_123`
+- incident notes created by the agent when explicitly requested
 
 The store supports health lookup, time-filtered errors, ranked runbook search, payment lookup and filtering, and payment updates. Returned records are cloned to prevent accidental mutation of the underlying fixture state.
 
@@ -94,8 +115,10 @@ This store is intentionally in-memory for the MVP. Its state resets whenever the
 - `get_service_health(service)`
 - `get_recent_errors(service)`
 - `search_runbook(query)`
-- `create_incident_note(...)`
-- `retry_payment(paymentId)` - requires confirmation
+- `get_payment(paymentId)`
+- `create_incident_note(service, title, content)`
+
+`retry_payment(paymentId)` is deliberately not available yet. It will be introduced with the explicit confirmation flow for dangerous tools.
 
 ## Key product views
 
