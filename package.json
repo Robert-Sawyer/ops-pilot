@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev --workspace @ops-pilot/api\" \"npm run dev --workspace @ops-pilot/web\"",
     "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces"
   },
   "devDependencies": {

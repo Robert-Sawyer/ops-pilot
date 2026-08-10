@@ -6,7 +6,7 @@ It investigates fictional service incidents, queries local operational data, sea
 
 ## Current status
 
-Stage 1 is complete: the repository contains a TypeScript monorepo with a Next.js frontend and a Fastify API. Agent orchestration, local operational data, and OpenAI tool calling will be added in later stages.
+Stages 1 and 2 are complete: the repository contains a TypeScript monorepo with a Next.js frontend, a Fastify API, and a typed in-memory operational data store. Agent orchestration and OpenAI tool calling will be added in later stages.
 
 ## Example
 
@@ -30,7 +30,7 @@ For a risky request such as `Retry the failed payment`, the backend will return 
 - Fastify API
 - TypeScript
 - OpenAI SDK with function/tool calling (planned)
-- Small local dataset for services, errors, runbooks, payments, and incident notes (planned)
+- Typed in-memory dataset for services, errors, runbooks, and payments
 - Optional MCP adapter after the MVP
 
 ## Repository structure
@@ -38,10 +38,11 @@ For a risky request such as `Retry the failed payment`, the backend will return 
 ```text
 ops-pilot/
 ├── apps/
-│   ├── api/              # Fastify API, currently exposes GET /health
-│   └── web/              # Next.js frontend
-├── package.json          # npm workspaces and root commands
-└── tsconfig.base.json    # shared TypeScript compiler settings
+│   ├── api/
+│   │   └── src/data/     # domain types, fixtures, store, and tests
+│   └── web/               # Next.js frontend
+├── package.json           # npm workspaces and root commands
+└── tsconfig.base.json     # shared TypeScript compiler settings
 ```
 
 ## Getting started
@@ -60,9 +61,23 @@ Each app includes an `.env.example` file. Copy it to `.env.local` when configura
 Useful commands:
 
 ```bash
+npm test
 npm run typecheck
 npm run build
 ```
+
+## Local operational data
+
+The API includes deterministic sample data for:
+
+- health snapshots of `payments-api`, `notifications-api`, and `user-service`
+- recent service errors, including 17 payment gateway timeouts
+- searchable runbook sections for payments, notifications, and authentication
+- successful, failed, and processing payments, including `payment_123`
+
+The store supports health lookup, time-filtered errors, ranked runbook search, payment lookup and filtering, and payment updates. Returned records are cloned to prevent accidental mutation of the underlying fixture state.
+
+This store is intentionally in-memory for the MVP. Its state resets whenever the API process restarts.
 
 ## Core services
 
