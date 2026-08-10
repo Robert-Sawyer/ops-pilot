@@ -10,6 +10,8 @@ import {
   type AgentTraceStep,
   type PendingConfirmation,
 } from "../../lib/agent-api";
+import { storeAgentTrace } from "../../lib/trace-storage";
+import { AppHeader } from "./app-header";
 import { TracePanel } from "./trace-panel";
 
 type MessageRole = "assistant" | "user" | "activity" | "error";
@@ -69,6 +71,7 @@ export function ChatWorkspace() {
 
   const applyAgentResult = (result: AgentRunResult) => {
     setTrace(result.trace);
+    storeAgentTrace(result.trace);
 
     if (result.status === "requires_confirmation") {
       setPendingConfirmation(result.confirmation);
@@ -163,19 +166,7 @@ export function ChatWorkspace() {
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <a className="brand" href="#workspace" aria-label="Ops Pilot home">
-          <span className="brand-mark" aria-hidden="true">OP</span>
-          <span>
-            <strong>Ops Pilot</strong>
-            <small>Developer Operations Agent</small>
-          </span>
-        </a>
-        <div className="environment-pill">
-          <span aria-hidden="true" />
-          Local simulation
-        </div>
-      </header>
+      <AppHeader activeView="chat" traceStepCount={trace.length} />
 
       <main className="product-layout" id="workspace">
         <section className="chat-panel" aria-labelledby="chat-title">
