@@ -36,9 +36,14 @@ it("exposes the agent runner through a typed Fastify route", async () => {
     agentRunner: {
       async run(message) {
         return {
+          status: "completed",
+          requiresConfirmation: false,
           answer: "Investigation complete.",
           trace: [{ type: "user_message", content: message }],
         };
+      },
+      async resolveConfirmation() {
+        throw new Error("No confirmation is expected in this test.");
       },
     },
   });
@@ -50,6 +55,37 @@ it("exposes the agent runner through a typed Fastify route", async () => {
 
   assert.equal(response.statusCode, 200);
   assert.equal(response.json().answer, "Investigation complete.");
+
+  await app.close();
+});
+
+it("resolves a pending dangerous action through the confirmation route", async () => {
+  let receivedDecision: { id: string; approved: boolean } | undefined;
+  const app = buildApp({
+    agentRunner: {
+      async run() {
+        throw new Error("No initial run is expected in this test.");
+      },
+      async resolveConfirmation(confirmationId, approved) {
+        receivedDecision = { id: confirmationId, approved };
+        return {
+          status: "completed",
+          requiresConfirmation: false,
+          answer: "The payment retry was queued.",
+          trace: [],
+        };
+      },
+    },
+  });
+  const response = await app.inject({
+    method: "POST",
+    url: "/api/agent/confirm",
+    payload: { confirmationId: "confirmation_123", approved: true },
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(receivedDecision, { id: "confirmation_123", approved: true });
+  assert.equal(response.json().answer, "The payment retry was queued.");
 
   await app.close();
 });

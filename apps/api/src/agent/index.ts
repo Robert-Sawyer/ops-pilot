@@ -1,6 +1,7 @@
 export { createConfiguredAgent } from "./configured-agent.js";
 export type { ConfiguredAgentOptions } from "./configured-agent.js";
 export {
+  AgentConfirmationNotFoundError,
   AgentRunError,
   createOpenAIAgentRunner,
   defaultAgentInstructions,
@@ -9,4 +10,11 @@ export type {
   OpenAIAgentRunnerOptions,
   ResponsesGateway,
 } from "./openai-agent-runner.js";
-export type { AgentRunner, AgentRunResult, AgentTraceStep } from "./types.js";
+export type {
+  AgentCompletedResult,
+  AgentConfirmationRequiredResult,
+  AgentRunner,
+  AgentRunResult,
+  AgentTraceStep,
+  PendingConfirmation,
+} from "./types.js";

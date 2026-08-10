@@ -98,11 +98,61 @@ export function createOperationalToolRegistry({
       }),
   });
 
+  const retryPayment = defineTool({
+    name: "retry_payment",
+    description:
+      "Request one retry of a failed payment. This dangerous action always requires explicit user confirmation before execution.",
+    parameters: z.strictObject({
+      paymentId: z
+        .string()
+        .min(1)
+        .max(100)
+        .describe("The failed payment identifier, for example payment_123."),
+    }),
+    confirmation: {
+      title: "Retry failed payment?",
+      describe: ({ paymentId }) => {
+        const payment = dataStore.getPayment(paymentId);
+        if (!payment) {
+          return `Retry payment ${paymentId}. The payment will be validated again before execution.`;
+        }
+
+        return `Retry ${payment.id} for ${payment.currency} ${payment.amount.toFixed(2)} through ${payment.provider}.`;
+      },
+    },
+    execute: ({ paymentId }) => {
+      const payment = dataStore.getPayment(paymentId);
+      if (!payment) {
+        throw new Error(`Payment '${paymentId}' was not found.`);
+      }
+      if (payment.status !== "failed") {
+        throw new Error(
+          `Payment '${paymentId}' cannot be retried because its status is '${payment.status}'.`,
+        );
+      }
+      if (payment.failureCode !== "PAYMENT_GATEWAY_TIMEOUT") {
+        throw new Error(
+          `Payment '${paymentId}' is not retryable because it did not fail with a gateway timeout.`,
+        );
+      }
+
+      const updatedPayment = dataStore.updatePayment(paymentId, {
+        status: "processing",
+        updatedAt: now().toISOString(),
+        failureCode: null,
+        failureReason: null,
+      });
+
+      return { action: "retry_queued", payment: updatedPayment };
+    },
+  });
+
   return createToolRegistry([
     getServiceHealth,
     getRecentErrors,
     searchRunbook,
     getPayment,
     createIncidentNote,
+    retryPayment,
   ]);
 }
