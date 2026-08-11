@@ -7,7 +7,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc --project tsconfig.json",
     "start": "node dist/server.js",
-    "test": "node --import tsx --test src/app.test.ts src/agent/openai-agent-runner.test.ts src/data/local-data-store.test.ts src/tools/operational-tools.test.ts",
+    "test": "node --import tsx --test src/app.test.ts src/agent/openai-agent-runner.test.ts src/agent/agent-scenarios.test.ts src/data/local-data-store.test.ts src/tools/operational-tools.test.ts",
     "typecheck": "tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
