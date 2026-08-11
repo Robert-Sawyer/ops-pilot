@@ -2,11 +2,74 @@
 
 [![CI](https://github.com/Robert-Sawyer/ops-pilot/actions/workflows/ci.yml/badge.svg)](https://github.com/Robert-Sawyer/ops-pilot/actions/workflows/ci.yml)
 
-Ops Pilot is a small Developer Operations Agent built to demonstrate real AI tool calling in a practical backend workflow.
+Ops Pilot is a compact Developer Operations Agent that investigates simulated service incidents with real OpenAI function calling.
 
-It investigates fictional service incidents, queries local operational data, searches runbooks, creates incident notes, and requests user confirmation before running dangerous actions.
+The model chooses which typed tools to call, the Fastify backend executes them against local operational data, and the Next.js UI shows both the final answer and an auditable Agent Trace. Dangerous actions are paused until the user explicitly confirms or cancels them.
 
-## Run the project locally
+## Documentation
+
+- [Features and benefits](docs/FEATURES.md) - workflows, tools, UI capabilities, testing, and project value
+- [Technical decisions](docs/TECHNICAL_DECISIONS.md) - architecture choices, trade-offs, and current MVP boundaries
+
+## What this project demonstrates
+
+- genuine multi-step tool calling rather than a prompt-only simulation
+- strict tool schemas with runtime argument validation
+- backend-enforced confirmation for a dangerous tool
+- manual Responses API continuation with structured tool results
+- an ordered trace of messages, model rounds, tool calls, results, and decisions
+- deterministic scenario tests that do not call the OpenAI API
+
+## Example workflows
+
+| User request | Typical agent behavior |
+| --- | --- |
+| `Payments are failing. Can you investigate?` | Checks health, reads recent errors, searches a runbook, and summarizes evidence |
+| `Investigate payment errors and create an incident note.` | Collects evidence and writes a local incident note |
+| `Retry payment_123.` | Inspects the payment and pauses before `retry_payment` until the user decides |
+
+Example investigation sequence:
+
+```text
+User message
+    -> get_service_health("payments-api")
+    -> get_recent_errors("payments-api")
+    -> search_runbook("payment gateway timeout")
+    -> evidence-based final answer
+```
+
+## Architecture
+
+```text
+Next.js / React
+       |
+       | HTTP
+       v
+Fastify API
+       |
+       | Responses API function calls
+       v
+OpenAI model
+       |
+       | typed tool requests
+       v
+Tool registry -> local services, errors, runbooks, payments, incident notes
+```
+
+The model can request a tool but cannot execute application code directly. Fastify validates the arguments, applies the confirmation policy, runs the selected tool, and sends a structured result back to the model.
+
+## Tech stack
+
+- TypeScript
+- OpenAI TypeScript SDK and Responses API
+- Fastify
+- Next.js 15 and React 19
+- Zod
+- npm workspaces
+- native Node.js test runner
+- GitHub Actions
+
+## Run locally
 
 ### Requirements
 
@@ -16,140 +79,81 @@ It investigates fictional service incidents, queries local operational data, sea
 
 ### 1. Install dependencies
 
-Run this command from the repository root:
+From the repository root:
 
 ```bash
 npm install
 ```
 
-### 2. Configure the backend
+### 2. Configure the API
 
-Create the local API environment file.
-
-On Windows PowerShell:
+Windows PowerShell:
 
 ```powershell
 Copy-Item apps/api/.env.example apps/api/.env
 ```
 
-On macOS or Linux:
+macOS or Linux:
 
 ```bash
 cp apps/api/.env.example apps/api/.env
 ```
 
-Open `apps/api/.env` and set your key:
+Set the key in `apps/api/.env`:
 
 ```dotenv
 OPENAI_API_KEY=your_openai_api_key
 ```
 
-The default model is `gpt-5-mini`. You can change it with `OPENAI_MODEL` in the same file.
+`OPENAI_MODEL` is optional and defaults to `gpt-5-mini`.
 
-### 3. Start the frontend and backend
-
-Run both applications together from the repository root:
+### 3. Start both applications
 
 ```bash
 npm run dev
 ```
 
-Once both applications are ready, open:
+Open:
 
 - Chat UI: [http://localhost:3000](http://localhost:3000)
+- Agent Trace: [http://localhost:3000/trace](http://localhost:3000/trace)
 - Fastify API: [http://localhost:3001](http://localhost:3001)
 - API health check: [http://localhost:3001/health](http://localhost:3001/health)
 
-The root command starts the Next.js frontend and Fastify backend at the same time. Stop both with `Ctrl+C`.
+The root command starts the frontend and backend together. Stop both with `Ctrl+C`.
 
-### Start the applications separately (optional)
+### Start applications separately
 
-Use two terminals from the repository root if you want separate logs.
-
-Terminal 1 - backend:
+Terminal 1 - API:
 
 ```bash
 npm run dev --workspace @ops-pilot/api
 ```
 
-Terminal 2 - frontend:
+Terminal 2 - web:
 
 ```bash
 npm run dev --workspace @ops-pilot/web
 ```
 
-The frontend connects to `http://localhost:3001` by default. To use another API address, copy `apps/web/.env.example` to `apps/web/.env.local` and change `NEXT_PUBLIC_API_BASE_URL`.
+The frontend uses `http://localhost:3001` by default. To change it, copy `apps/web/.env.example` to `apps/web/.env.local` and update `NEXT_PUBLIC_API_BASE_URL`.
 
-## Current status
+## Available tools
 
-Stages 1 through 6 are complete: the repository contains a TypeScript monorepo, typed local operational data, strict operational tools, an OpenAI Responses API tool-calling loop, a chat interface, explicit approval handling for dangerous actions, a dedicated Agent Trace screen, and deterministic agent scenario tests.
+| Tool | Behavior |
+| --- | --- |
+| `get_service_health(service)` | Reads current service health |
+| `get_recent_errors(service)` | Reads error groups from the last 10 minutes |
+| `search_runbook(query)` | Returns up to three relevant runbook sections |
+| `get_payment(paymentId)` | Reads payment status and failure details |
+| `create_incident_note(...)` | Creates a local note when explicitly requested |
+| `retry_payment(paymentId)` | Requires confirmation before changing payment state |
 
-## Example
+See [Features and benefits](docs/FEATURES.md) for complete workflow descriptions.
 
-**User:** `Payments are failing. Can you investigate?`
+## API endpoints
 
-The agent will independently call tools such as:
-
-1. `get_service_health("payments-api")`
-2. `get_recent_errors("payments-api")`
-3. `search_runbook("payment gateway timeout")`
-
-It then produces an evidence-based answer, for example:
-
-> Payments API is healthy, but 17 requests failed with gateway timeout errors during the last 10 minutes. The runbook recommends checking provider availability before retrying requests.
-
-For a risky request such as `Retry payment_123`, the agent prepares `retry_payment("payment_123")` but does not execute it. The Chat UI displays the requested action and waits for an explicit **Cancel** or **Confirm retry** decision.
-
-## Tech stack
-
-- Next.js 15 and React 19 frontend
-- Fastify API
-- TypeScript
-- OpenAI SDK with Responses API function calling
-- Zod schemas for typed tool arguments and runtime validation
-- Typed in-memory dataset for services, errors, runbooks, payments, and incident notes
-- Optional MCP adapter after the MVP
-
-## Repository structure
-
-```text
-ops-pilot/
-|-- apps/
-|   |-- api/
-|   |   `-- src/
-|   |       |-- agent/       # OpenAI loop, trace, paused runs, and scenarios
-|   |       |-- data/        # domain types, fixtures, and local store
-|   |       |-- routes/      # Fastify agent endpoints
-|   |       `-- tools/       # typed operational tools and policies
-|   `-- web/
-|       `-- app/
-|           |-- trace/      # dedicated Agent Trace route
-|           `-- components/ # Chat UI, trace timeline, and shared navigation
-|-- package.json             # npm workspaces and root commands
-`-- tsconfig.base.json       # shared TypeScript compiler settings
-```
-
-## Chat and confirmation flow
-
-The workspace shows agent answers and an ordered execution trace. Safe tools run immediately. A dangerous tool returns `requiresConfirmation: true`, and the backend keeps the paused run in memory without executing the action.
-
-Confirming or cancelling sends the decision to the API. The backend consumes the pending confirmation once, either executes the approved tool or records the cancellation, and then lets the model produce its final response. Confirmations expire after 10 minutes and cannot be replayed.
-
-## Agent Trace screen
-
-Open [http://localhost:3000/trace](http://localhost:3000/trace) or use the **Agent trace** navigation item after running an investigation. The screen presents the latest execution as an ordered audit timeline containing:
-
-- the user's message and the agent's final answer
-- each model response round and its response identifier
-- tool names, call identifiers, and formatted arguments
-- tool execution results with success or error status
-- confirmation requests and the user's decision
-
-The full-screen view also provides step counts, filters for messages, tools, and decisions, plus an option to copy the complete trace as JSON. The latest trace is stored in `sessionStorage`, so it survives navigation and page refreshes in the current browser tab but is cleared when that tab is closed.
-
-## Agent API
-
-Start an investigation:
+### Start an agent run
 
 ```bash
 curl -X POST http://localhost:3001/api/agent/run \
@@ -157,51 +161,35 @@ curl -X POST http://localhost:3001/api/agent/run \
   -d '{"message":"Payments are failing. Can you investigate?"}'
 ```
 
-A completed run returns `status: "completed"`, `requiresConfirmation: false`, the final `answer`, and an ordered `trace`.
+The response is either completed or paused for confirmation:
 
-A dangerous action returns `status: "requires_confirmation"`, `requiresConfirmation: true`, a confirmation description, and the trace so far. Resolve it with:
+- `status: "completed"` includes `answer` and `trace`.
+- `status: "requires_confirmation"` includes `confirmation` and the trace so far.
+
+### Resolve a confirmation
 
 ```bash
 curl -X POST http://localhost:3001/api/agent/confirm \
   -H "Content-Type: application/json" \
-  -d '{"confirmationId":"the_returned_confirmation_id","approved":true}'
+  -d '{"confirmationId":"returned_confirmation_id","approved":true}'
 ```
 
-Set `approved` to `false` to cancel. The continuation response contains either another pending confirmation or the completed agent answer.
+Use `approved: false` to cancel. Confirmations are single-use and expire after 10 minutes.
 
-## Local operational data
+## Repository structure
 
-The API includes deterministic sample data for:
-
-- health snapshots of `payments-api`, `notifications-api`, and `user-service`
-- recent service errors, including 17 payment gateway timeouts
-- searchable runbook sections for payments, notifications, and authentication
-- successful, failed, and processing payments, including `payment_123`
-- incident notes created by the agent when explicitly requested
-
-The store supports health lookup, time-filtered errors, ranked runbook search, payment lookup and filtering, incident notes, and validated payment state updates. Returned records are cloned to prevent accidental mutation of fixture state.
-
-This store and all pending confirmations are intentionally in memory for the MVP. Their state resets whenever the API process restarts.
-
-## Initial tools
-
-- `get_service_health(service)`
-- `get_recent_errors(service)`
-- `search_runbook(query)`
-- `get_payment(paymentId)`
-- `create_incident_note(service, title, content)`
-- `retry_payment(paymentId)` - always requires explicit user confirmation
-
-## Agent scenario tests
-
-The API test suite includes deterministic scenarios that run the complete agent loop against the real typed tools and local data store:
-
-- investigation of payment failures using service health, recent errors, and runbook evidence
-- creation of an incident note from investigated operational data
-- payment retry cancellation, verifying that the failed payment remains unchanged
-- payment retry confirmation, verifying that execution happens only after approval
-
-Only the Responses API gateway is scripted, so the tests do not send requests to OpenAI and do not require an API key. They validate the tool outputs returned to the model, the resulting agent trace, and persisted local state changes.
+```text
+ops-pilot/
+|-- apps/
+|   |-- api/                 # Fastify, agent loop, tools, store, and tests
+|   `-- web/                 # Next.js Chat UI and Agent Trace
+|-- docs/
+|   |-- FEATURES.md
+|   `-- TECHNICAL_DECISIONS.md
+|-- .github/workflows/ci.yml
+|-- package.json             # workspace commands
+`-- tsconfig.base.json
+```
 
 ## Quality checks
 
@@ -211,10 +199,12 @@ npm run typecheck
 npm run build
 ```
 
-Pull requests to `master` run the same tests, TypeScript checks, and production builds in GitHub Actions.
+The test suite covers the store, tools, agent loop, confirmation flow, API routes, and four complete agent scenarios. Only the OpenAI gateway is scripted in scenario tests, so they do not require an API key or consume API credits.
 
-## Goals
+GitHub Actions runs the same tests, TypeScript checks, and production builds for pull requests and changes to `master`.
 
-- Demonstrate genuine multi-step tool calling instead of a prompt-only simulation.
-- Keep tool execution explicit, typed, auditable, and safe.
-- Provide a compact portfolio project focused on AI-agent backend patterns.
+## MVP scope
+
+Ops Pilot uses fictional data and intentionally keeps operational state and pending confirmations in memory. It has no authentication or real infrastructure integrations and should be treated as a portfolio demonstration, not a production operations system.
+
+See [Technical decisions](docs/TECHNICAL_DECISIONS.md#current-mvp-boundaries) for the complete list of boundaries and extension points.
