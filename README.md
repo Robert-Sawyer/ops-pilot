@@ -82,7 +82,7 @@ The frontend connects to `http://localhost:3001` by default. To use another API 
 
 ## Current status
 
-Stages 1 through 5 are complete: the repository contains a TypeScript monorepo, typed local operational data, strict operational tools, an OpenAI Responses API tool-calling loop, a chat interface, explicit approval handling for dangerous actions, and a dedicated Agent Trace screen.
+Stages 1 through 6 are complete: the repository contains a TypeScript monorepo, typed local operational data, strict operational tools, an OpenAI Responses API tool-calling loop, a chat interface, explicit approval handling for dangerous actions, a dedicated Agent Trace screen, and deterministic agent scenario tests.
 
 ## Example
 
@@ -117,7 +117,7 @@ ops-pilot/
 |-- apps/
 |   |-- api/
 |   |   `-- src/
-|   |       |-- agent/       # OpenAI loop, trace, and paused run state
+|   |       |-- agent/       # OpenAI loop, trace, paused runs, and scenarios
 |   |       |-- data/        # domain types, fixtures, and local store
 |   |       |-- routes/      # Fastify agent endpoints
 |   |       `-- tools/       # typed operational tools and policies
@@ -191,6 +191,17 @@ This store and all pending confirmations are intentionally in memory for the MVP
 - `get_payment(paymentId)`
 - `create_incident_note(service, title, content)`
 - `retry_payment(paymentId)` - always requires explicit user confirmation
+
+## Agent scenario tests
+
+The API test suite includes deterministic scenarios that run the complete agent loop against the real typed tools and local data store:
+
+- investigation of payment failures using service health, recent errors, and runbook evidence
+- creation of an incident note from investigated operational data
+- payment retry cancellation, verifying that the failed payment remains unchanged
+- payment retry confirmation, verifying that execution happens only after approval
+
+Only the Responses API gateway is scripted, so the tests do not send requests to OpenAI and do not require an API key. They validate the tool outputs returned to the model, the resulting agent trace, and persisted local state changes.
 
 ## Quality checks
 
